@@ -40,6 +40,7 @@ toggle_popup() {
 			tmux set-option -s -t "$session_id" detach-on-destroy on
 			prefix="$(get_val "$1" prefix)"
 			tmux set-option -s -t "$session_id" prefix "${prefix:-None}"
+			tmux send-keys -t "$session_id" "$(get_val "$1" cmd)" C-m
 			session="$session_id"
 		fi
 		exec tmux attach -t "$session" >/dev/null
@@ -71,7 +72,7 @@ bind_key() {
 	session="tpad_$1"
 	key=$(get_val "$1" bind)
 	if [[ "$key" ]]; then
-		eval "tmux bind -n \"$key\" display-popup $(get_opts "$1") -E \"$TPAD toggle $1 $(get_val "$1" cmd)\""
+		eval "tmux bind -n \"$key\" display-popup $(get_opts "$1") -E \"$TPAD toggle $1\""
 		tmux bind -T "$session" "$key" run-shell "$TPAD toggle $1"
 	fi
 }
