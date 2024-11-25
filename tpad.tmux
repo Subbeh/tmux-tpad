@@ -7,12 +7,12 @@ CURRENT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TPAD="${CURRENT_DIR}/${BASH_SOURCE[0]}"
 
 declare -A DEFAULTS=(
-	[title]=" 󱂬 TPad: @instance@ "
+	[title]="#[fg=magenta,bold] 󱂬 TPad: @instance@ "
 	[dir]="$HOME"
 	[width]="60%"
 	[height]="60%"
-	[border_style]="fg=blue"
-	[style]="fg=magenta"
+	[style]="fg=blue"
+	[border_lines]="rounded"
 )
 
 main() {
@@ -35,11 +35,15 @@ toggle_popup() {
 	else
 		if ! tmux has -t "$session" 2>/dev/null; then
 			session_id="$(tmux new-session -dP -s "$session" -F '#{session_id}')"
+
+			tmux set-option -s -t "$session_id" default-terminal "$TERM"
 			tmux set-option -s -t "$session_id" key-table "$session"
 			tmux set-option -s -t "$session_id" status off
 			tmux set-option -s -t "$session_id" detach-on-destroy on
+
 			prefix="$(get_val "$1" prefix)"
 			tmux set-option -s -t "$session_id" prefix "${prefix:-None}"
+
 			tmux send-keys -t "$session_id" "$(get_val "$1" cmd)" C-m
 			session="$session_id"
 		fi
