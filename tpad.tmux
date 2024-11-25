@@ -4,7 +4,7 @@ set -x
 exec &>>/tmp/tpad.log
 
 CURRENT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-TPAD="${CURRENT_DIR}/${BASH_SOURCE[0]}"
+TPAD="${CURRENT_DIR}/tpad.tmux"
 
 declare -A DEFAULTS=(
 	[title]="#[fg=magenta,bold] 󱂬 TPad: @instance@ "
