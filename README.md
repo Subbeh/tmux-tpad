@@ -60,6 +60,10 @@ This will create 3 separate sessions -- `scratchpad`, `notes`, and `tasks`.
 
 Press the prefix key, followed by the key binding defined with the `@tpad-<session>-bind` option to toggle the popup.
 
+# Todo
+
+- [ ] Window controls (resize, maximize, etc.)
+
 # Acknowledgments
 
 [Dismissable Popup Shell in tmux](https://willhbr.net/2023/02/07/dismissable-popup-shell-in-tmux/)
