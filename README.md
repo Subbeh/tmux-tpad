@@ -20,7 +20,9 @@ TPad sessions are defined wtih `@tpad-<session_name>-<option>` options. As long 
 
 ### Options
 
-| Option       | Default                                  | Exaplanation                        |
+See `:man tmux` and search for `display-popup` for more information
+
+| Option       | Default                                  | Explanation                         |
 | ------------ | ---------------------------------------- | ----------------------------------- |
 | bind         |                                          | Keybinding to open session          |
 | prefix       | None                                     | Tmux prefix key assigned to session |
