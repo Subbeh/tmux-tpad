@@ -20,7 +20,7 @@ TPad sessions are defined wtih `@tpad-<session_name>-<option>` options. As long 
 
 ### Options
 
-See `:man tmux` and search for `display-popup` for more information
+See [tmux manual](http://man.openbsd.org/OpenBSD-current/man1/tmux.1#display-popup) for more information.
 
 | Option       | Default                                  | Explanation                         |
 | ------------ | ---------------------------------------- | ----------------------------------- |
