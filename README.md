@@ -65,6 +65,7 @@ Press the prefix key, followed by the key binding defined with the `@tpad-<sessi
 # Todo
 
 - [ ] Window controls (resize, maximize, etc.)
+- [ ] Image support (kitty terminal feature)
 
 # Acknowledgments
 
