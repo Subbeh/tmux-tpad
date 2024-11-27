@@ -42,9 +42,10 @@ toggle_popup() {
       tmux set-option -s -t "$session_id" detach-on-destroy on
 
       prefix="$(get_val "$1" prefix)"
-      tmux set-option -s -t "$session_id" prefix "${prefix:-None}"
+      [[ "$prefix" ]] && tmux set-option -s -t "$session_id" prefix "$prefix"
 
-      tmux send-keys -t "$session_id" "$(get_val "$1" cmd)" C-m
+      cmd="$(get_val "$1" cmd)"
+      [[ "$cmd" ]] && tmux send-keys -t "$session_id" "$cmd" C-m
       session="$session_id"
     fi
     exec tmux attach -t "$session" >/dev/null
