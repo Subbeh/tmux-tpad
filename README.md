@@ -43,6 +43,10 @@ See [tmux manual](http://man.openbsd.org/OpenBSD-current/man1/tmux.1#display-pop
 ```sh
 set -g @tpad-scratchpad-bind    "C-p"
 
+set -g @tpad-git-bind           "C-g"
+set -g @tpad-git-dir            "#{pane_current_path}"
+set -g @tpad-git-cmd            "lazygit"
+
 set -g @tpad-notes-bind         "C-n"
 set -g @tpad-notes-style        "fg=yellow"
 set -g @tpad-notes-dir          "${NOTES_DIR}"
@@ -56,7 +60,7 @@ set -g @tpad-tasks-width        "40%"
 set -g @tpad-tasks-cmd          "taskwarrior-tui"
 ```
 
-This will create 3 separate sessions -- `scratchpad`, `notes`, and `tasks`.
+This will create 3 separate sessions -- `scratchpad`, `git`, `notes`, and `tasks`.
 
 # Usage
 
