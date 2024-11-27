@@ -77,7 +77,7 @@ bind_key() {
   session="tpad_$1"
   key=$(get_val "$1" bind)
   if [[ "$key" ]]; then
-    eval "tmux bind -n \"$key\" display-popup $(get_opts "$1") -E \"$TPAD toggle $1\""
+    eval "tmux bind \"$key\" display-popup $(get_opts "$1") -E \"$TPAD toggle $1\""
     tmux bind -T "$session" "$key" run-shell "$TPAD toggle $1"
   fi
 }
