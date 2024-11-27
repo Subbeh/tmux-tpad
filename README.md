@@ -16,7 +16,7 @@ Press prefix + I (capital i, as in Install) to fetch the plugin.
 
 # Configuration
 
-TPad sessions are defined wtih `@tpad-<session_name>-<option>` options. As long as there is at least one option defined, the TPad session will be created.
+TPad sessions are defined wtih `@tpad-<session_name>-<option>` options. The only required option is `bind`, the rest is optional.
 
 ### Options
 
@@ -25,7 +25,7 @@ See [tmux manual](http://man.openbsd.org/OpenBSD-current/man1/tmux.1#display-pop
 | Option       | Default                                  | Explanation                         |
 | ------------ | ---------------------------------------- | ----------------------------------- |
 | bind         |                                          | Keybinding to open session          |
-| prefix       | None                                     | Tmux prefix key assigned to session |
+| prefix       |                                          | Tmux prefix key assigned to session |
 | title        | `#[fg=magenta,bold] 󱂬 TPad: @instance@ ` | Popup title                         |
 | dir          | `$HOME`                                  | Startup directory                   |
 | width        | 60%                                      | Popup width                         |
@@ -41,18 +41,18 @@ See [tmux manual](http://man.openbsd.org/OpenBSD-current/man1/tmux.1#display-pop
 #### Example:
 
 ```sh
-set -g @tpad-scratchpad-bind    'C-p'
-set -g @tpad-scratchpad-prefix  'C-s'
+set -g @tpad-scratchpad-bind    "C-p"
 
-set -g @tpad-notes-bind         'C-n'
-set -g @tpad-notes-style        'fg=yellow'
+set -g @tpad-notes-bind         "C-n"
+set -g @tpad-notes-style        "fg=yellow"
 set -g @tpad-notes-dir          "${NOTES_DIR}"
-set -g @tpad-notes-cmd          "nvim"
+set -g @tpad-notes-cmd          "nvim -c NvimTreeOpen"
+set -g @tpad-notes-prefix       "None"
 
-set -g @tpad-tasks-bind         'C-t'
-set -g @tpad-tasks-style        'fg=green'
-set -g @tpad-tasks-height       '40%'
-set -g @tpad-tasks-width        '40%'
+set -g @tpad-tasks-bind         "C-t"
+set -g @tpad-tasks-style        "fg=green"
+set -g @tpad-tasks-height       "40%"
+set -g @tpad-tasks-width        "40%"
 set -g @tpad-tasks-cmd          "taskwarrior-tui"
 ```
 
