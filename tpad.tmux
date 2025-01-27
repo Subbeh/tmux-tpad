@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
-set -x
+set -eo pipefail
 
-exec &>>"${XDG_CACHE_HOME:-$HOME/.cache}/tpad.log"
+# Configuration
+LOG_FILE="${XDG_CACHE_HOME:-$HOME/.cache}/tpad.log"
+exec &>>"$LOG_FILE"
 
-CURRENT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-TPAD="${CURRENT_DIR}/tpad.tmux"
+readonly CURRENT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+readonly TPAD_SCRIPT="${CURRENT_DIR}/tpad.tmux"
 
 declare -A DEFAULTS=(
   [title]="#[fg=magenta,bold] 󱂬 TPad: @instance@ "
@@ -12,74 +14,131 @@ declare -A DEFAULTS=(
   [width]="60%"
   [height]="60%"
   [style]="fg=blue"
-  [border_lines]="rounded"
+  [border_style]="fg=cyan,rounded"
 )
 
 main() {
-  if [ "$1" = "" ]; then
-    tmux show-options -g | awk -v FS="-" '/^@tpad/{ print $2}' | sort -u | while read -r instance; do
-      bind_key "$instance"
-    done
-  else
-    case "$1" in
+  check_dependencies
+  case "${1:-}" in
     toggle) toggle_popup "$2" ;;
-    esac
-  fi
+    "")     initialize_instances ;;
+    *)      show_help; exit 1 ;;
+  esac
+}
+
+initialize_instances() {
+  tmux show-options -g | awk -v FS="-" '/^@tpad/{ print $2}' | sort -u | while read -r instance; do
+    bind_key "$instance"
+  done
 }
 
 toggle_popup() {
-  session="tpad_$1"
+  local instance="$1"
+  local session="tpad_${instance}"
+  local current_session="$(tmux display-message -p '#{session_name}')"
 
-  if [ "$(tmux display-message -p '#{session_name}')" = "$session" ]; then
+  if [[ "$current_session" == "$session" ]]; then
     tmux detach
   else
-    if ! tmux has -t "$session" 2>/dev/null; then
-      session_id="$(tmux new-session -dP -s "$session" -F '#{session_id}')"
-
-      tmux set-option -s -t "$session_id" default-terminal "$TERM"
-      tmux set-option -s -t "$session_id" key-table "$session"
-      tmux set-option -s -t "$session_id" status off
-      tmux set-option -s -t "$session_id" detach-on-destroy on
-
-      prefix="$(get_val "$1" prefix)"
-      [[ "$prefix" ]] && tmux set-option -s -t "$session_id" prefix "$prefix"
-
-      cmd="$(get_val "$1" cmd)"
-      [[ "$cmd" ]] && tmux send-keys -t "$session_id" "$cmd" C-m
-      session="$session_id"
-    fi
-    exec tmux attach -t "$session" >/dev/null
+    create_session_if_needed "$instance" "$session"
+    local popup_opts=()
+    while IFS= read -r opt; do
+      popup_opts+=("$opt")
+    done < <(build_popup_options "$instance")
+    
+    tmux display-popup "${popup_opts[@]}" -E "tmux attach -t $session"
   fi
 }
 
-get_val() {
-  var="@tpad-$1-$2"
-  val=$(tmux show-option -gqv "$var")
-  if [ "$val" = "" ]; then
-    val=${DEFAULTS[$2]/@instance@/${1^}}
+create_session_if_needed() {
+  local instance="$1" session="$2"
+  tmux has-session -t "$session" 2>/dev/null && return
+
+  local dir="$(get_config "$instance" dir)"
+  local session_id="$(tmux new-session -dP -s "$session" -c "$dir" -F '#{session_id}')"
+  configure_session "$instance" "$session_id"
+}
+
+configure_session() {
+  local instance="$1" session_id="$2"
+  tmux set-option -s -t "$session_id" default-terminal "$TERM"
+  tmux set-option -s -t "$session_id" key-table "tpad_$instance"
+  tmux set-option -s -t "$session_id" status off
+  tmux set-option -s -t "$session_id" detach-on-destroy on
+
+  # Add small delay to ensure session is ready
+  sleep 0.1
+
+  local prefix="$(get_config "$instance" prefix)"
+  [[ "$prefix" ]] && tmux set-option -s -t "$session_id" prefix "$prefix"
+
+  local cmd="$(get_config "$instance" cmd)"
+  if [[ -n "$cmd" ]]; then
+    # Run the command and make the session exit when it's done
+    tmux send-keys -t "$session_id" "$cmd; exit" C-m
   fi
+}
+
+get_config() {
+  local instance="$1" key="$2"
+  local tmux_var="@tpad-${instance}-${key}"
+  local val="$(tmux show-option -gqv "$tmux_var")"
+
+  if [[ -z "$val" ]]; then
+    val="${DEFAULTS[$key]/@instance@/${instance^}}"
+  fi
+
   echo "$val"
 }
 
-get_opts() {
-  for opt in T-title S-style s-border_style b-border_lines h-height w-width x-pos_x y-pos_y d-dir e-env; do
-    IFS=- read -r o v <<<"$opt"
-    val=$(get_val "$1" "$v")
-    if [ "$val" != "" ]; then
-      opts+=" -$o \"$val\""
-    fi
-  done
+bind_key() {
+  local instance="$1"
+  local key="$(get_config "$instance" bind)"
+  [[ -z "$key" ]] && return
 
-  echo "$opts"
+  tmux bind-key "$key" run-shell "$TPAD_SCRIPT toggle $instance"
+  tmux bind-key -T "tpad_$instance" "$key" run-shell "$TPAD_SCRIPT toggle $instance"
 }
 
-bind_key() {
-  session="tpad_$1"
-  key=$(get_val "$1" bind)
-  if [[ "$key" ]]; then
-    eval "tmux bind \"$key\" display-popup $(get_opts "$1") -E \"$TPAD toggle $1\""
-    tmux bind -T "$session" "$key" run-shell "$TPAD toggle $1"
+build_popup_options() {
+  local instance="$1"
+  declare -A opt_map=(
+    [T]="title"
+    [S]="style"
+    [s]="border_style"
+    [b]="border_lines"
+    [h]="height"
+    [w]="width"
+    [x]="pos_x"
+    [y]="pos_y"
+    [d]="dir"
+    [e]="env"
+  )
+
+  for opt in "${!opt_map[@]}"; do
+    local val="$(get_config "$instance" "${opt_map[$opt]}")"
+    [[ -n "$val" ]] && echo "-${opt}" "${val}"
+  done
+}
+
+check_dependencies() {
+  if ! command -v tmux &>/dev/null; then
+    echo "Error: tmux is required but not installed" >&2
+    exit 1
   fi
+}
+
+show_help() {
+  cat <<EOF
+TPad - Tmux Popup Manager
+
+Usage:
+  tpad.tmux [command]
+
+Commands:
+  (no command)  Initialize all configured instances
+  toggle        Toggle a popup instance
+EOF
 }
 
 main "$@"
