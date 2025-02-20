@@ -5,6 +5,8 @@ set -eo pipefail
 LOG_FILE="${XDG_CACHE_HOME:-$HOME/.cache}/tpad.log"
 exec &>>"$LOG_FILE"
 
+set -x
+
 readonly CURRENT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly TPAD_SCRIPT="${CURRENT_DIR}/tpad.tmux"
 
@@ -21,12 +23,17 @@ main() {
   check_dependencies
   case "${1:-}" in
     toggle) toggle_popup "$2" ;;
-    "")     initialize_instances ;;
-    *)      show_help; exit 1 ;;
+    fullscreen) toggle_fullscreen ;;
+    "") initialize_instances ;;
+    *)
+      show_help
+      exit 1
+      ;;
   esac
 }
 
 initialize_instances() {
+  tmux bind-key "C-f" run-shell "$TPAD_SCRIPT fullscreen"
   tmux show-options -g | awk -v FS="-" '/^@tpad/{ print $2}' | sort -u | while read -r instance; do
     bind_key "$instance"
   done
@@ -38,14 +45,20 @@ toggle_popup() {
   local current_session="$(tmux display-message -p '#{session_name}')"
 
   if [[ "$current_session" == "$session" ]]; then
-    tmux detach
+    if tmux show-env -g TPAD_ZOOMED | grep -q "$session"; then
+      tmux setenv -g -u TPAD_ZOOMED
+      tmux switch-client -t "$(tmux show-env -g TPAD_PARENT_SESSION | cut -d= -f2)"
+    else
+      tmux detach
+    fi
   else
+    tmux setenv -g TPAD_PARENT_SESSION "$current_session"
     create_session_if_needed "$instance" "$session"
     local popup_opts=()
     while IFS= read -r opt; do
       popup_opts+=("$opt")
     done < <(build_popup_options "$instance")
-    
+
     tmux display-popup "${popup_opts[@]}" -E "tmux attach -t $session"
   fi
 }
@@ -125,6 +138,24 @@ check_dependencies() {
   if ! command -v tmux &>/dev/null; then
     echo "Error: tmux is required but not installed" >&2
     exit 1
+  fi
+}
+
+toggle_fullscreen() {
+  local current_session="$(tmux display-message -p '#{session_name}')"
+  local parent_session="$(tmux show-env -g TPAD_PARENT_SESSION | cut -d= -f2)"
+
+  if [[ "$current_session" =~ tpad_* ]]; then
+    local zoomed_session="$(tmux show-env -g TPAD_ZOOMED | cut -d= -f2)"
+    if [[ -n "$zoomed_session" ]]; then
+      tmux setenv -g -u TPAD_ZOOMED
+      tmux switch-client -t "$parent_session"
+      toggle_popup "${current_session#tpad_}"
+    else
+      tmux setenv -g TPAD_ZOOMED "$current_session"
+      tmux detach
+      tmux switch-client -t "$current_session"
+    fi
   fi
 }
 
