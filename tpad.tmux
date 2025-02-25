@@ -52,6 +52,9 @@ toggle_popup() {
       tmux detach
     fi
   else
+    if [[ "$current_session" =~ tpad_* ]]; then
+      tmux detach
+    fi
     tmux setenv -g TPAD_PARENT_SESSION "$current_session"
     create_session_if_needed "$instance" "$session"
     local popup_opts=()
