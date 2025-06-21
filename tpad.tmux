@@ -81,9 +81,11 @@ configure_session() {
   tmux set-option -s -t "$session_id" key-table "tpad_$instance"
   tmux set-option -s -t "$session_id" status off
   tmux set-option -s -t "$session_id" detach-on-destroy on
+  tmux set-option -s -t "$session_id" mouse on
+  tmux set-option -s -t "$session_id" set-clipboard on
 
   # Add small delay to ensure session is ready
-  sleep 0.1
+  # sleep 0.1
 
   local prefix="$(get_config "$instance" prefix)"
   [[ "$prefix" ]] && tmux set-option -s -t "$session_id" prefix "$prefix"
@@ -151,13 +153,29 @@ toggle_fullscreen() {
   if [[ "$current_session" =~ tpad_* ]]; then
     local zoomed_session="$(tmux show-env -g TPAD_ZOOMED | cut -d= -f2)"
     if [[ -n "$zoomed_session" ]]; then
+      # Exiting fullscreen mode
       tmux setenv -g -u TPAD_ZOOMED
+      tmux set -s -t "$current_session" status "off"
       tmux switch-client -t "$parent_session"
       toggle_popup "${current_session#tpad_}"
     else
+      # Entering fullscreen mode
       tmux setenv -g TPAD_ZOOMED "$current_session"
       tmux detach
       tmux switch-client -t "$current_session"
+
+      # Configure status line for fullscreen mode
+      tmux set -s -t "$current_session" status "on"
+      tmux set -s -t "$current_session" status-justify "centre"
+      tmux set -s -t "$current_session" status-position "top"
+
+      # Set status line format with session name centered using the configured title
+      local instance="${current_session#tpad_}"
+      local title="$(get_config "$instance" "title")"
+      tmux set -s -t "$current_session" status-format[0] "#[align=centre]${title} [FULLSCREEN]"
+
+      # Set status line style
+      tmux set -s -t "$current_session" status-style "bg=terminal,fg=terminal"
     fi
   fi
 }

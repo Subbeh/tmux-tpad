@@ -89,6 +89,10 @@ set -g @tpad-tasks-cmd         "taskwarrior-tui"
 3. Press the configured key binding to toggle the popup (e.g., <kbd>Ctrl</kbd>+<kbd>g</kbd> for the git session)
 4. The popup will close automatically when the command exits
 
+### Full-screen mode
+
+Full-screen mode can be toggled by pressing the tmux prefix key with <kbd>Ctrl</kbd>+<kbd>f</kbd> from within a tpad session
+
 ## Roadmap
 
 - [ ] Window controls (resize, maximize, minimize)
