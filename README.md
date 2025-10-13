@@ -27,30 +27,40 @@ A lightweight floating window manager for tmux that allows you to create customi
 
 TPad sessions are configured using tmux options in the format: `@tpad-<session_name>-<option>`.
 
+### Global Options
+
+| Option      | Default | Description                                 |
+| ----------- | ------- | ------------------------------------------- |
+| @tpad-debug | false   | Enable debug logging to `~/.cache/tpad.log` |
+
 ### Required Options
-| Option | Description |
-|--------|-------------|
+
+| Option | Description                                                      |
+| ------ | ---------------------------------------------------------------- |
 | bind   | Key binding to toggle the popup session (e.g., "C-p" for Ctrl+P) |
 
 ### Appearance Options
-| Option        | Default | Description |
-|---------------|---------|-------------|
-| title         | `#[fg=magenta,bold] 󱂬 TPad: @instance@ ` | Popup window title |
-| width         | 60%     | Popup width (percentage or columns) |
-| height        | 60%     | Popup height (percentage or rows) |
-| style         | fg=blue | Popup window style |
-| border_style  |         | Border style (e.g., "fg=cyan") |
-| border_lines  | rounded | Border line style (rounded/none/etc) |
-| pos_x         |         | Horizontal position (optional) |
-| pos_y         |         | Vertical position (optional) |
+
+| Option       | Default                                  | Description                                                    |
+| ------------ | ---------------------------------------- | -------------------------------------------------------------- |
+| title        | `#[fg=magenta,bold] 󱂬 TPad: @instance@ ` | Popup window title                                             |
+| width        | 60%                                      | Popup width (percentage or columns)                            |
+| height       | 60%                                      | Popup height (percentage or rows)                              |
+| style        | fg=blue                                  | Popup window style                                             |
+| border_style |                                          | Border style (e.g., "fg=cyan")                                 |
+| border_lines | rounded                                  | Border line style (rounded/none/etc)                           |
+| pos_x        |                                          | Horizontal position (percentage, pixels, or left/center/right) |
+| pos_y        |                                          | Vertical position (percentage, pixels, or top/center/bottom)   |
 
 ### Behavior Options
-| Option  | Default | Description |
-|---------|---------|-------------|
-| dir     | $HOME   | Working directory for the session |
-| cmd     |         | Command to execute when popup opens |
-| prefix  |         | Custom tmux prefix for the session |
-| env     |         | Additional environment variables |
+
+| Option | Default | Description                                         |
+| ------ | ------- | --------------------------------------------------- |
+| dir    | $HOME   | Working directory for the session                   |
+| cmd    |         | Command to execute when popup opens                 |
+| prefix |         | Custom tmux prefix for the session                  |
+| env    |         | Additional environment variables                    |
+| opts   |         | Session-specific tmux options (semicolon-separated) |
 
 ## Example Configuration
 
@@ -58,10 +68,11 @@ Here's a comprehensive example showing different use cases:
 
 ```tmux
 # Simple scratchpad
-set -g @tpad-scratchpad-bind    "C-p"
+set -g @tpad-scratchpad-bind   "C-p"
+set -g @tpad-scratchpad-opts   "status on"
 
 # Git management with lazygit
-set -g @tpad-git-bind           "C-g"
+set -g @tpad-git-bind          "C-g"
 set -g @tpad-git-dir           "#{pane_current_path}"
 set -g @tpad-git-cmd           "lazygit"
 set -g @tpad-git-style         "fg=yellow"
@@ -79,6 +90,8 @@ set -g @tpad-tasks-bind        "C-t"
 set -g @tpad-tasks-style       "fg=green"
 set -g @tpad-tasks-height      "40%"
 set -g @tpad-tasks-width       "40%"
+set -g @tpad-tasks-pos_x       "right"
+set -g @tpad-tasks-pos_y       "bottom"
 set -g @tpad-tasks-cmd         "taskwarrior-tui"
 ```
 
@@ -93,6 +106,18 @@ set -g @tpad-tasks-cmd         "taskwarrior-tui"
 
 Full-screen mode can be toggled by pressing the tmux prefix key with <kbd>Ctrl</kbd>+<kbd>f</kbd> from within a tpad session
 
+### Session-specific Options
+
+You can set session-specific tmux options using the `opts` configuration. Multiple options can be separated with semicolons:
+
+```tmux
+# Enable the statusline for a specific popup
+set -g @tpad-scratchpad-opts "status on"
+
+# Multiple options
+set -g @tpad-scratchpad-opts "status on; status-position top"
+```
+
 ## Roadmap
 
 - [ ] Window controls (resize, maximize, minimize)
@@ -103,6 +128,7 @@ Full-screen mode can be toggled by pressing the tmux prefix key with <kbd>Ctrl</
 ## Credits
 
 This project was inspired by:
+
 - [Dismissable Popup Shell in tmux](https://willhbr.net/2023/02/07/dismissable-popup-shell-in-tmux/)
 - [omerxx/tmux-floax](https://github.com/omerxx/tmux-floax)
 

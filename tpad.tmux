@@ -2,10 +2,12 @@
 set -eo pipefail
 
 # Configuration
-LOG_FILE="${XDG_CACHE_HOME:-$HOME/.cache}/tpad.log"
-exec &>>"$LOG_FILE"
+if [[ "$(tmux show-options -gqv @tpad-debug)" == "true" ]]; then
+  LOG_FILE="${XDG_CACHE_HOME:-$HOME/.cache}/tpad.log"
+  exec &>>"$LOG_FILE"
 
-set -x
+  set -x
+fi
 
 readonly CURRENT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly TPAD_SCRIPT="${CURRENT_DIR}/tpad.tmux"
@@ -77,24 +79,29 @@ create_session_if_needed() {
 
 configure_session() {
   local instance="$1" session_id="$2"
-  tmux set-option -s -t "$session_id" default-terminal "$TERM"
-  tmux set-option -s -t "$session_id" key-table "tpad_$instance"
-  tmux set-option -s -t "$session_id" status off
-  tmux set-option -s -t "$session_id" detach-on-destroy on
-  tmux set-option -s -t "$session_id" mouse on
-  tmux set-option -s -t "$session_id" set-clipboard on
-
-  # Add small delay to ensure session is ready
-  # sleep 0.1
+  tmux set-option -t "$session_id" default-terminal "$TERM"
+  tmux set-option -t "$session_id" key-table "tpad_$instance"
+  tmux set-option -t "$session_id" status off
+  tmux set-option -t "$session_id" detach-on-destroy on
+  set_opts "$session_id"
 
   local prefix="$(get_config "$instance" prefix)"
   [[ "$prefix" ]] && tmux set-option -s -t "$session_id" prefix "$prefix"
 
   local cmd="$(get_config "$instance" cmd)"
   if [[ -n "$cmd" ]]; then
-    # Run the command and make the session exit when it's done
     tmux send-keys -t "$session_id" "$cmd; exit" C-m
   fi
+}
+
+set_opts() {
+  local session_id="$1"
+  local opts="$(get_config "$instance" opts)"
+  [[ -z "$opts" ]] && return
+
+  while IFS=';' read -r opt; do
+    [[ -n "$opt" ]] && tmux set-option -t "$session_id" $opt
+  done <<<"$opts"
 }
 
 get_config() {
