@@ -161,31 +161,28 @@ toggle_fullscreen() {
   if [[ "$current_session" =~ tpad_* ]]; then
     local zoomed_session="$(tmux show-env -g TPAD_ZOOMED | cut -d= -f2)"
     if [[ -n "$zoomed_session" ]]; then
-      # Exiting fullscreen mode
+      # Exiting fullscreen mode - clear fullscreen settings and restore config
       tmux setenv -g -u TPAD_ZOOMED
-      tmux set -t "$current_session" status "off"
-      tmux set -u -t "$current_session" status-format[0]
+      tmux set -u -t "$current_session" status-left
+      tmux set -u -t "$current_session" status-right
       tmux set -u -t "$current_session" status-justify
       tmux set -u -t "$current_session" status-position
-      set_opts "$instance" "$current_session"
+      tmux set -u -t "$current_session" status-style
+      configure_session "$instance" "$current_session"
       tmux switch-client -t "$parent_session"
-      toggle_popup "${current_session#tpad_}"
+      toggle_popup "$instance"
     else
       # Entering fullscreen mode
       tmux setenv -g TPAD_ZOOMED "$current_session"
       tmux detach
       tmux switch-client -t "$current_session"
 
-      # Configure status line for fullscreen mode
-      tmux set -t "$current_session" status "on"
-      tmux set -t "$current_session" status-justify "centre"
-      tmux set -t "$current_session" status-position "top"
-
-      # Set status line format with session name centered using the configured title
-      local title="$(get_config "$instance" "title")"
-      tmux set -t "$current_session" status-format[0] "#[align=centre]${title} [FULLSCREEN]"
-
-      # Set status line style
+      local title="$(get_config "$instance" title)"
+      tmux set -t "$current_session" status on
+      tmux set -t "$current_session" status-justify centre
+      tmux set -t "$current_session" status-position top
+      tmux set -t "$current_session" status-left ""
+      tmux set -t "$current_session" status-right "${title} [FULLSCREEN]"
       tmux set -t "$current_session" status-style "bg=terminal,fg=terminal"
     fi
   fi
