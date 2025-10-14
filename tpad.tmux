@@ -69,7 +69,8 @@ toggle_popup() {
 }
 
 create_session_if_needed() {
-  local instance="$1" session="$2"
+  local instance="$1"
+  local session="$2"
   tmux has-session -t "$session" 2>/dev/null && return
 
   local dir="$(get_config "$instance" dir)"
@@ -78,15 +79,9 @@ create_session_if_needed() {
 }
 
 configure_session() {
-  local instance="$1" session_id="$2"
-  tmux set -t "$session_id" default-terminal "$TERM"
-  tmux set -t "$session_id" key-table "tpad_$instance"
-  tmux set -t "$session_id" status off
-  tmux set -t "$session_id" detach-on-destroy on
-  set_opts "$instance" "$session_id"
-
-  local prefix="$(get_config "$instance" prefix)"
-  [[ "$prefix" ]] && tmux set -t "$session_id" prefix "$prefix"
+  local instance="$1"
+  local session_id="$2"
+  apply_session_config "$instance" "$session_id"
 
   local cmd="$(get_config "$instance" cmd)"
   if [[ -n "$cmd" ]]; then
@@ -94,8 +89,24 @@ configure_session() {
   fi
 }
 
+apply_session_config() {
+  local instance="$1"
+  local session_id="$2"
+  tmux set -t "$session_id" default-terminal "$TERM"
+  tmux set -t "$session_id" key-table "tpad_$instance"
+  tmux set -t "$session_id" status off
+  tmux set -t "$session_id" detach-on-destroy on
+  set_opts "$instance" "$session_id"
+
+  local prefix="$(get_config "$instance" prefix)"
+  if [[ -n "$prefix" ]]; then
+    tmux set -t "$session_id" prefix "$prefix"
+  fi
+}
+
 set_opts() {
-  local instance="$1" session_id="$2"
+  local instance="$1"
+  local session_id="$2"
   local opts="$(get_config "$instance" opts)"
   [[ -z "$opts" ]] && return
 
@@ -105,7 +116,8 @@ set_opts() {
 }
 
 get_config() {
-  local instance="$1" key="$2"
+  local instance="$1"
+  local key="$2"
   local tmux_var="@tpad-${instance}-${key}"
   local val="$(tmux show-option -gqv "$tmux_var")"
 
@@ -168,7 +180,7 @@ toggle_fullscreen() {
       tmux set -u -t "$current_session" status-justify
       tmux set -u -t "$current_session" status-position
       tmux set -u -t "$current_session" status-style
-      configure_session "$instance" "$current_session"
+      apply_session_config "$instance" "$current_session"
       tmux switch-client -t "$parent_session"
       toggle_popup "$instance"
     else
