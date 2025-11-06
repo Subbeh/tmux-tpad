@@ -55,13 +55,13 @@ TPad sessions are configured using tmux options in the format: `@tpad-<session_n
 
 ### Behavior Options
 
-| Option  | Default | Description                                         |
-| ------- | ------- | --------------------------------------------------- |
-| dir     | $HOME   | Working directory for the session                   |
-| cmd     |         | Command to execute when popup opens                 |
-| prefix  |         | Custom tmux prefix for the session                  |
-| env     |         | Additional environment variables                    |
-| opts    |         | Session-specific tmux options (semicolon-separated) |
+| Option  | Default | Description                                           |
+| ------- | ------- | ----------------------------------------------------- |
+| dir     | $HOME   | Working directory for the session                     |
+| cmd     |         | Command to execute when popup opens                   |
+| prefix  |         | Custom tmux prefix for the session                    |
+| env     |         | Additional environment variables                      |
+| opts    |         | Session-specific tmux options (semicolon-separated)   |
 | per-dir | false   | Create separate sessions per git repository/directory |
 
 ## Example Configuration
@@ -72,6 +72,7 @@ Here's a comprehensive example showing different use cases:
 # Simple scratchpad
 set -g @tpad-scratchpad-bind   "C-p"
 set -g @tpad-scratchpad-opts   "status on"
+set -g @tpad-scratchpad-dir    "#{pane_current_path}"
 
 # Git management with lazygit (separate session per git repo)
 set -g @tpad-git-bind          "C-g"
@@ -113,12 +114,14 @@ Full-screen mode can be toggled by pressing the tmux prefix key with <kbd>Ctrl</
 When `per-dir` is enabled, tmux-tpad creates separate sessions for each git repository or directory. This is particularly useful for tools like lazygit, where you want independent sessions for different projects.
 
 **How it works:**
+
 - Detects the git root of your current pane's directory
 - Creates a unique session per git root (e.g., `tpad_git_project1`, `tpad_git_project2`)
 - Automatically sets the working directory to the git root
 - Falls back to the current directory if not in a git repository
 
 **Example:**
+
 ```tmux
 set -g @tpad-git-bind "C-g"
 set -g @tpad-git-cmd "lazygit"
