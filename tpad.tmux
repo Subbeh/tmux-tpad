@@ -44,6 +44,26 @@ initialize_instances() {
 toggle_popup() {
   local instance="$1"
   local session="tpad_${instance}"
+  local working_dir=""
+
+  # Check if per-directory sessions are enabled
+  local per_dir="$(get_config "$instance" per-dir)"
+  if [[ "$per_dir" == "true" ]]; then
+    local pane_dir="$(tmux display-message -p '#{pane_current_path}')"
+    local git_root="$(get_git_root "$pane_dir")"
+
+    if [[ -n "$git_root" ]]; then
+      local dir_suffix="$(sanitize_dir_name "$git_root")"
+      session="tpad_${instance}_${dir_suffix}"
+      working_dir="$git_root"
+    else
+      # Fall back to using pane's current directory if not in a git repo
+      local dir_suffix="$(sanitize_dir_name "$pane_dir")"
+      session="tpad_${instance}_${dir_suffix}"
+      working_dir="$pane_dir"
+    fi
+  fi
+
   local current_session="$(tmux display-message -p '#{session_name}')"
 
   if [[ "$current_session" == "$session" ]]; then
@@ -58,11 +78,11 @@ toggle_popup() {
       tmux detach
     fi
     tmux setenv -g TPAD_PARENT_SESSION "$current_session"
-    create_session_if_needed "$instance" "$session"
+    create_session_if_needed "$instance" "$session" "$working_dir"
     local popup_opts=()
     while IFS= read -r opt; do
       popup_opts+=("$opt")
-    done < <(build_popup_options "$instance")
+    done < <(build_popup_options "$instance" "$working_dir")
 
     tmux display-popup "${popup_opts[@]}" -E "tmux attach -t $session"
   fi
@@ -71,9 +91,11 @@ toggle_popup() {
 create_session_if_needed() {
   local instance="$1"
   local session="$2"
+  local working_dir="$3"
   tmux has-session -t "$session" 2>/dev/null && return
 
-  local dir="$(get_config "$instance" dir)"
+  # Use provided working_dir or fall back to config
+  local dir="${working_dir:-$(get_config "$instance" dir)}"
   local session_id="$(tmux new-session -dP -s "$session" -c "$dir" -F '#{session_id}')"
   configure_session "$instance" "$session_id"
 }
@@ -139,6 +161,7 @@ bind_key() {
 
 build_popup_options() {
   local instance="$1"
+  local working_dir="$2"
   declare -A opt_map=(
     [T]="title"
     [S]="style"
@@ -153,7 +176,13 @@ build_popup_options() {
   )
 
   for opt in "${!opt_map[@]}"; do
-    local val="$(get_config "$instance" "${opt_map[$opt]}")"
+    local val=""
+    # Use provided working_dir for the dir option if available
+    if [[ "$opt" == "d" && -n "$working_dir" ]]; then
+      val="$working_dir"
+    else
+      val="$(get_config "$instance" "${opt_map[$opt]}")"
+    fi
     [[ -n "$val" ]] && echo "-${opt}" "${val}"
   done
 }
@@ -163,6 +192,22 @@ check_dependencies() {
     echo "Error: tmux is required but not installed" >&2
     exit 1
   fi
+}
+
+get_git_root() {
+  local pane_dir="$1"
+  if [[ -d "$pane_dir/.git" ]]; then
+    echo "$pane_dir"
+    return
+  fi
+
+  (cd "$pane_dir" 2>/dev/null && git rev-parse --show-toplevel 2>/dev/null) || echo ""
+}
+
+sanitize_dir_name() {
+  local dir="$1"
+  # Get the basename and convert to safe session name suffix
+  basename "$dir" | tr '[:upper:]' '[:lower:]' | tr -c '[:alnum:]' '_' | sed 's/_*$//'
 }
 
 toggle_fullscreen() {

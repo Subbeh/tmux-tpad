@@ -11,6 +11,7 @@ A lightweight floating window manager for tmux that allows you to create customi
 - Run specific commands automatically when opening a popup
 - Set custom working directories per popup
 - Support for custom key bindings and tmux prefix keys
+- Per-directory sessions: create separate sessions for each git repository
 
 ## Installation
 
@@ -54,13 +55,14 @@ TPad sessions are configured using tmux options in the format: `@tpad-<session_n
 
 ### Behavior Options
 
-| Option | Default | Description                                         |
-| ------ | ------- | --------------------------------------------------- |
-| dir    | $HOME   | Working directory for the session                   |
-| cmd    |         | Command to execute when popup opens                 |
-| prefix |         | Custom tmux prefix for the session                  |
-| env    |         | Additional environment variables                    |
-| opts   |         | Session-specific tmux options (semicolon-separated) |
+| Option  | Default | Description                                         |
+| ------- | ------- | --------------------------------------------------- |
+| dir     | $HOME   | Working directory for the session                   |
+| cmd     |         | Command to execute when popup opens                 |
+| prefix  |         | Custom tmux prefix for the session                  |
+| env     |         | Additional environment variables                    |
+| opts    |         | Session-specific tmux options (semicolon-separated) |
+| per-dir | false   | Create separate sessions per git repository/directory |
 
 ## Example Configuration
 
@@ -71,10 +73,10 @@ Here's a comprehensive example showing different use cases:
 set -g @tpad-scratchpad-bind   "C-p"
 set -g @tpad-scratchpad-opts   "status on"
 
-# Git management with lazygit
+# Git management with lazygit (separate session per git repo)
 set -g @tpad-git-bind          "C-g"
-set -g @tpad-git-dir           "#{pane_current_path}"
 set -g @tpad-git-cmd           "lazygit"
+set -g @tpad-git-per-dir       "true"
 set -g @tpad-git-style         "fg=yellow"
 
 # Notes with Neovim
@@ -105,6 +107,25 @@ set -g @tpad-tasks-cmd         "taskwarrior-tui"
 ### Full-screen mode
 
 Full-screen mode can be toggled by pressing the tmux prefix key with <kbd>Ctrl</kbd>+<kbd>f</kbd> from within a tpad session
+
+### Per-Directory Sessions
+
+When `per-dir` is enabled, tmux-tpad creates separate sessions for each git repository or directory. This is particularly useful for tools like lazygit, where you want independent sessions for different projects.
+
+**How it works:**
+- Detects the git root of your current pane's directory
+- Creates a unique session per git root (e.g., `tpad_git_project1`, `tpad_git_project2`)
+- Automatically sets the working directory to the git root
+- Falls back to the current directory if not in a git repository
+
+**Example:**
+```tmux
+set -g @tpad-git-bind "C-g"
+set -g @tpad-git-cmd "lazygit"
+set -g @tpad-git-per-dir "true"
+```
+
+Now pressing `Ctrl-g` in different git repositories will open separate lazygit sessions for each project.
 
 ### Session-specific Options
 
