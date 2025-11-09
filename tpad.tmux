@@ -180,6 +180,11 @@ build_popup_options() {
     # Use provided working_dir for the dir option if available
     if [[ "$opt" == "d" && -n "$working_dir" ]]; then
       val="$working_dir"
+    elif [[ "$opt" == "T" && -n "$working_dir" ]]; then
+      # Append directory name to title if per-dir is enabled
+      val="$(get_config "$instance" "${opt_map[$opt]}")"
+      local dir_name="$(basename "$working_dir")"
+      val="${val% } [${dir_name}]  "
     else
       val="$(get_config "$instance" "${opt_map[$opt]}")"
     fi
