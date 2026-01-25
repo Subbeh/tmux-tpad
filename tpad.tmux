@@ -188,7 +188,10 @@ build_popup_options() {
     else
       val="$(get_config "$instance" "${opt_map[$opt]}")"
     fi
-    [[ -n "$val" ]] && echo "-${opt}" "${val}"
+    if [[ -n "$val" ]]; then
+      echo "-${opt}"
+      echo "${val}"
+    fi
   done
 }
 
