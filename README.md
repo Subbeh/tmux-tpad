@@ -55,14 +55,15 @@ TPad sessions are configured using tmux options in the format: `@tpad-<session_n
 
 ### Behavior Options
 
-| Option  | Default | Description                                           |
-| ------- | ------- | ----------------------------------------------------- |
-| dir     | $HOME   | Working directory for the session                     |
-| cmd     |         | Command to execute when popup opens                   |
-| prefix  |         | Custom tmux prefix for the session                    |
-| env     |         | Additional environment variables                      |
-| opts    |         | Session-specific tmux options (semicolon-separated)   |
-| per-dir | false   | Create separate sessions per git repository/directory |
+| Option  | Default | Description                                                               |
+| ------- | ------- | ------------------------------------------------------------------------- |
+| cmd     |         | Command to execute when popup opens                                       |
+| dir     | $HOME   | Working directory for the session                                         |
+| env     |         | Additional environment variables                                          |
+| opts    |         | Session-specific tmux options (semicolon-separated)                       |
+| per-dir | false   | Create separate sessions per git repository/directory                     |
+| prefix  |         | Custom tmux prefix for the session                                        |
+| table   |         | Key table for the binding (e.g., `root`). Auto-detected for mouse events. |
 
 ## Example Configuration
 
@@ -96,13 +97,20 @@ set -g @tpad-tasks-width       "40%"
 set -g @tpad-tasks-pos_x       "right"
 set -g @tpad-tasks-pos_y       "bottom"
 set -g @tpad-tasks-cmd         "taskwarrior-tui"
+
+# Right-click to open a scratchpad (table auto-detected as root for mouse events)
+set -g @tpad-scratch-bind      "MouseDown3Pane"
+
+# Keyboard shortcut without prefix key (explicit root table)
+set -g @tpad-quick-bind        "C-Space"
+set -g @tpad-quick-table       "root"
 ```
 
 ## Usage
 
 1. Configure your popup sessions in `tmux.conf` as shown above
-2. Press your tmux prefix key (default: <kbd>Ctrl</kbd>+<kbd>b</kbd>)
-3. Press the configured key binding to toggle the popup (e.g., <kbd>Ctrl</kbd>+<kbd>g</kbd> for the git session)
+2. Press your tmux prefix key (default: <kbd>Ctrl</kbd>+<kbd>b</kbd>), then press the configured key binding to toggle the popup (e.g., <kbd>Ctrl</kbd>+<kbd>g</kbd> for the git session)
+3. For root-table bindings (`table "root"` or mouse events), no prefix key is needed
 4. The popup will close automatically when the command exits
 
 ### Full-screen mode

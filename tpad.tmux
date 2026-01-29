@@ -155,7 +155,21 @@ bind_key() {
   local key="$(get_config "$instance" bind)"
   [[ -z "$key" ]] && return
 
-  tmux bind-key "$key" run-shell "$TPAD_SCRIPT toggle $instance"
+  local table="$(get_config "$instance" table)"
+
+  # Mouse events always require the root table
+  if [[ -z "$table" ]]; then
+    case "$key" in
+      Mouse* | DoubleClick* | TripleClick* | WheelUp* | WheelDown*) table="root" ;;
+    esac
+  fi
+
+  if [[ -n "$table" ]]; then
+    tmux bind-key -T "$table" "$key" run-shell "$TPAD_SCRIPT toggle $instance"
+  else
+    tmux bind-key "$key" run-shell "$TPAD_SCRIPT toggle $instance"
+  fi
+
   tmux bind-key -T "tpad_$instance" "$key" run-shell "$TPAD_SCRIPT toggle $instance"
 }
 
