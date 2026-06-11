@@ -35,9 +35,18 @@ main() {
   esac
 }
 
+get_global_config() {
+  local key="$1"
+  local default="$2"
+  local val="$(tmux show-option -gqv "@tpad-${key}")"
+  echo "${val:-$default}"
+}
+
 initialize_instances() {
-  tmux bind-key "C-f" run-shell "$TPAD_SCRIPT fullscreen"
-  tmux bind-key "C-e" run-shell "$TPAD_SCRIPT eject"
+  local fullscreen_key="$(get_global_config bind-fullscreen C-f)"
+  local eject_key="$(get_global_config bind-eject C-e)"
+  tmux bind-key "$fullscreen_key" run-shell "$TPAD_SCRIPT fullscreen"
+  tmux bind-key "$eject_key" run-shell "$TPAD_SCRIPT eject"
   tmux show-options -g | awk -v FS="-" '/^@tpad/{ print $2}' | sort -u | while read -r instance; do
     bind_key "$instance"
   done
@@ -175,8 +184,9 @@ bind_key() {
     tmux bind-key "$key" run-shell "$TPAD_SCRIPT toggle $instance"
   fi
 
+  local eject_key="$(get_global_config bind-eject C-e)"
   tmux bind-key -T "tpad_$instance" "$key" run-shell "$TPAD_SCRIPT toggle $instance"
-  tmux bind-key -T "tpad_$instance" "C-e" run-shell "$TPAD_SCRIPT eject"
+  tmux bind-key -T "tpad_$instance" "$eject_key" run-shell "$TPAD_SCRIPT eject"
 }
 
 build_popup_options() {
