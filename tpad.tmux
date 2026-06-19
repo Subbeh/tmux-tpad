@@ -45,9 +45,9 @@ get_global_config() {
 initialize_instances() {
   local fullscreen_key="$(get_global_config bind-fullscreen C-f)"
   local eject_key="$(get_global_config bind-eject C-e)"
-  tmux bind-key "$fullscreen_key" run-shell "$TPAD_SCRIPT fullscreen"
-  tmux bind-key "$eject_key" run-shell "$TPAD_SCRIPT eject"
-  tmux show-options -g | awk -v FS="-" '/^@tpad/{ print $2}' | sort -u | while read -r instance; do
+  tmux bind-key -N "TPad: Fullscreen" "$fullscreen_key" run-shell "$TPAD_SCRIPT fullscreen"
+  tmux bind-key -N "TPad: Eject" "$eject_key" run-shell "$TPAD_SCRIPT eject"
+  tmux show-options -g | sed -n 's/^@tpad-\([^-]*\)-bind .*/\1/p' | sort -u | while read -r instance; do
     bind_key "$instance"
   done
 }
@@ -179,14 +179,14 @@ bind_key() {
   fi
 
   if [[ -n "$table" ]]; then
-    tmux bind-key -T "$table" "$key" run-shell "$TPAD_SCRIPT toggle $instance"
+    tmux bind-key -T "$table" -N "TPad: Toggle $instance" "$key" run-shell "$TPAD_SCRIPT toggle $instance"
   else
-    tmux bind-key "$key" run-shell "$TPAD_SCRIPT toggle $instance"
+    tmux bind-key -N "TPad: Toggle $instance" "$key" run-shell "$TPAD_SCRIPT toggle $instance"
   fi
 
   local eject_key="$(get_global_config bind-eject C-e)"
-  tmux bind-key -T "tpad_$instance" "$key" run-shell "$TPAD_SCRIPT toggle $instance"
-  tmux bind-key -T "tpad_$instance" "$eject_key" run-shell "$TPAD_SCRIPT eject"
+  tmux bind-key -T "tpad_$instance" -N "TPad: Toggle $instance" "$key" run-shell "$TPAD_SCRIPT toggle $instance"
+  tmux bind-key -T "tpad_$instance" -N "TPad: Eject" "$eject_key" run-shell "$TPAD_SCRIPT eject"
 }
 
 build_popup_options() {
@@ -251,7 +251,7 @@ sanitize_dir_name() {
 toggle_fullscreen() {
   local current_session="$(tmux display-message -p '#{session_name}')"
   local parent_session="$(tmux show-env -g TPAD_PARENT_SESSION | cut -d= -f2)"
-  local instance="${current_session#tpad_}"
+  local instance="$(tmux show-option -t "$current_session" -qv @tpad-instance)"
 
   if [[ "$current_session" =~ tpad_* ]]; then
     local zoomed_session="$(tmux show-env -g TPAD_ZOOMED | cut -d= -f2)"
@@ -298,9 +298,9 @@ eject_pane() {
   local join_opts=()
   case "$split_dir" in
     right) join_opts+=(-h) ;;
-    left)  join_opts+=(-h -b) ;;
+    left) join_opts+=(-h -b) ;;
     above) join_opts+=(-b) ;;
-    *)     ;;
+    *) ;;
   esac
   if [[ -n "$split_size" ]]; then
     join_opts+=(-l "${split_size}%")
