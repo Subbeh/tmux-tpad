@@ -26,6 +26,7 @@ main() {
   case "${1:-}" in
     toggle) toggle_popup "$2" ;;
     fullscreen) toggle_fullscreen ;;
+    eject) eject_pane ;;
     "") initialize_instances ;;
     *)
       show_help
@@ -34,9 +35,19 @@ main() {
   esac
 }
 
+get_global_config() {
+  local key="$1"
+  local default="$2"
+  local val="$(tmux show-option -gqv "@tpad-${key}")"
+  echo "${val:-$default}"
+}
+
 initialize_instances() {
-  tmux bind-key "C-f" run-shell "$TPAD_SCRIPT fullscreen"
-  tmux show-options -g | awk -v FS="-" '/^@tpad/{ print $2}' | sort -u | while read -r instance; do
+  local fullscreen_key="$(get_global_config bind-fullscreen C-f)"
+  local eject_key="$(get_global_config bind-eject C-e)"
+  tmux bind-key -N "TPad: Fullscreen" "$fullscreen_key" run-shell "$TPAD_SCRIPT fullscreen"
+  tmux bind-key -N "TPad: Eject" "$eject_key" run-shell "$TPAD_SCRIPT eject"
+  tmux show-options -g | sed -n 's/^@tpad-\([^-]*\)-bind .*/\1/p' | sort -u | while read -r instance; do
     bind_key "$instance"
   done
 }
@@ -78,7 +89,9 @@ toggle_popup() {
       tmux detach
     fi
     tmux setenv -g TPAD_PARENT_SESSION "$current_session"
-    create_session_if_needed "$instance" "$session" "$working_dir"
+    if ! reclaim_ejected_pane "$instance" "$session"; then
+      create_session_if_needed "$instance" "$session" "$working_dir"
+    fi
     local popup_opts=()
     while IFS= read -r opt; do
       popup_opts+=("$opt")
@@ -118,6 +131,7 @@ apply_session_config() {
   tmux set -t "$session_id" key-table "tpad_$instance"
   tmux set -t "$session_id" status off
   tmux set -t "$session_id" detach-on-destroy on
+  tmux set -t "$session_id" @tpad-instance "$instance"
   set_opts "$instance" "$session_id"
 
   local prefix="$(get_config "$instance" prefix)"
@@ -165,12 +179,14 @@ bind_key() {
   fi
 
   if [[ -n "$table" ]]; then
-    tmux bind-key -T "$table" "$key" run-shell "$TPAD_SCRIPT toggle $instance"
+    tmux bind-key -T "$table" -N "TPad: Toggle $instance" "$key" run-shell "$TPAD_SCRIPT toggle $instance"
   else
-    tmux bind-key "$key" run-shell "$TPAD_SCRIPT toggle $instance"
+    tmux bind-key -N "TPad: Toggle $instance" "$key" run-shell "$TPAD_SCRIPT toggle $instance"
   fi
 
-  tmux bind-key -T "tpad_$instance" "$key" run-shell "$TPAD_SCRIPT toggle $instance"
+  local eject_key="$(get_global_config bind-eject C-e)"
+  tmux bind-key -T "tpad_$instance" -N "TPad: Toggle $instance" "$key" run-shell "$TPAD_SCRIPT toggle $instance"
+  tmux bind-key -T "tpad_$instance" -N "TPad: Eject" "$eject_key" run-shell "$TPAD_SCRIPT eject"
 }
 
 build_popup_options() {
@@ -235,7 +251,7 @@ sanitize_dir_name() {
 toggle_fullscreen() {
   local current_session="$(tmux display-message -p '#{session_name}')"
   local parent_session="$(tmux show-env -g TPAD_PARENT_SESSION | cut -d= -f2)"
-  local instance="${current_session#tpad_}"
+  local instance="$(tmux show-option -t "$current_session" -qv @tpad-instance)"
 
   if [[ "$current_session" =~ tpad_* ]]; then
     local zoomed_session="$(tmux show-env -g TPAD_ZOOMED | cut -d= -f2)"
@@ -264,6 +280,66 @@ toggle_fullscreen() {
       tmux set -t "$current_session" status-right "${title} [FULLSCREEN]"
       tmux set -t "$current_session" status-style "bg=terminal,fg=terminal"
     fi
+  fi
+}
+
+eject_pane() {
+  local current_session="$(tmux display-message -p '#{session_name}')"
+  if [[ ! "$current_session" =~ tpad_ ]]; then return; fi
+
+  local parent_session="$(tmux show-env -g TPAD_PARENT_SESSION | cut -d= -f2)"
+  if [[ -z "$parent_session" ]]; then return; fi
+
+  local instance="$(tmux show-option -t "$current_session" -qv @tpad-instance)"
+  local pane_id="$(tmux display-message -p '#{pane_id}')"
+
+  local split_dir="$(get_config "$instance" eject-split)"
+  local split_size="$(get_config "$instance" eject-size)"
+  local join_opts=()
+  case "$split_dir" in
+    right) join_opts+=(-h) ;;
+    left) join_opts+=(-h -b) ;;
+    above) join_opts+=(-b) ;;
+    *) ;;
+  esac
+  if [[ -n "$split_size" ]]; then
+    join_opts+=(-l "${split_size}%")
+  fi
+
+  tmux join-pane "${join_opts[@]}" -s "$pane_id" -t "$parent_session"
+  local env_key="TPAD_EJECTED_$(echo "$current_session" | tr '[:lower:]' '[:upper:]' | tr -c '[:alnum:]' '_')"
+  tmux setenv -g "$env_key" "$pane_id"
+  # Close the popup — detach-on-destroy won't fire if other windows remain
+  tmux detach-client -s "$current_session"
+}
+
+reclaim_ejected_pane() {
+  local instance="$1"
+  local session="$2"
+  local env_key="TPAD_EJECTED_$(echo "$session" | tr '[:lower:]' '[:upper:]' | tr -c '[:alnum:]' '_')"
+  local pane_id="$(tmux show-env -g "$env_key" 2>/dev/null | cut -d= -f2)"
+
+  if [[ -z "$pane_id" ]]; then return 1; fi
+  # Check the pane still exists
+  if ! tmux display-message -t "$pane_id" -p "" 2>/dev/null; then
+    tmux setenv -g -u "$env_key"
+    return 1
+  fi
+
+  tmux setenv -g -u "$env_key"
+  if tmux has-session -t "$session" 2>/dev/null; then
+    # Session still exists (had multiple windows) — add pane as a new window
+    local new_win="$(tmux new-window -dP -t "${session}:" -F '#{pane_id}')"
+    tmux join-pane -s "$pane_id" -t "${session}:"
+    tmux kill-pane -t "$new_win"
+  else
+    # Session was destroyed — recreate it around the ejected pane
+    local dir="$(tmux display-message -t "$pane_id" -p '#{pane_current_path}')"
+    local session_id="$(tmux new-session -dP -s "$session" -c "$dir" -F '#{session_id}')"
+    local placeholder="$(tmux display-message -t "${session_id}:" -p '#{pane_id}')"
+    apply_session_config "$instance" "$session_id"
+    tmux join-pane -s "$pane_id" -t "${session}:"
+    tmux kill-pane -t "$placeholder"
   fi
 }
 
