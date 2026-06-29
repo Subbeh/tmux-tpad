@@ -60,12 +60,13 @@ TPad sessions are configured using tmux options in the format: `@tpad-<session_n
 
 | Option      | Default | Description                                                                  |
 | ----------- | ------- | ---------------------------------------------------------------------------- |
-| cmd         |         | Command to execute when popup opens                                          |
+| cmd         |         | Command to execute when popup opens (runs with `exec` by default)            |
 | dir         | $HOME   | Working directory for the session                                            |
 | env         |         | Additional environment variables                                             |
 | opts        |         | Session-specific tmux options (semicolon-separated)                          |
 | per-dir     | false   | Create separate sessions per git repository/directory                        |
 | prefix      |         | Custom tmux prefix for the session                                           |
+| shell       | false   | Keep the shell process (for compound commands like `cmd1 && cmd2`)           |
 | table       |         | Key table for the binding (e.g., `root`). Auto-detected for mouse events.    |
 | eject-split |         | Where to place the ejected pane: `right`, `left`, `above`, `below` (default) |
 | eject-size  |         | Size of the ejected pane as a percentage (e.g. `30`)                         |
@@ -82,8 +83,9 @@ set -g @tpad-scratchpad-dir     "#{pane_current_path}"
 
 # Git management with lazygit (separate session per git repo)
 set -g @tpad-git-bind           "C-g"
-set -g @tpad-git-cmd            "git rev-parse --is-inside-work-tree && lazygit"
+set -g @tpad-git-cmd            "git rev-parse --is-inside-work-tree && exec lazygit"
 set -g @tpad-git-per-dir        "true"
+set -g @tpad-git-shell          "true"
 set -g @tpad-git-style          "fg=red"
 
 # Claude sessions (separate session per git repo)
@@ -174,6 +176,18 @@ set -g @tpad-git-per-dir "true"
 ```
 
 Now pressing `Ctrl-g` in different git repositories will open separate lazygit sessions for each project.
+
+### Shell Mode
+
+By default, commands run with `exec`, which replaces the shell process — no leftover shell when the command exits. For compound commands (using `&&`, `||`, or `;`), enable `shell` mode to keep the shell:
+
+```tmux
+# Compound command needs shell mode
+set -g @tpad-git-cmd   "git rev-parse --is-inside-work-tree && exec lazygit"
+set -g @tpad-git-shell "true"
+```
+
+The `exec` inside the command string is optional but recommended — it replaces the shell once the condition passes, so no extra process remains.
 
 ### Session-specific Options
 

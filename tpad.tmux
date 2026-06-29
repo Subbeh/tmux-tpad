@@ -120,7 +120,12 @@ configure_session() {
 
   local cmd="$(get_config "$instance" cmd)"
   if [[ -n "$cmd" ]]; then
-    tmux send-keys -t "$session_id" "$cmd; exit" C-m
+    local use_shell="$(get_config "$instance" shell)"
+    if [[ "$use_shell" == "true" ]]; then
+      tmux send-keys -t "$session_id" "$cmd" C-m
+    else
+      tmux send-keys -t "$session_id" "exec $cmd" C-m
+    fi
   fi
 }
 
